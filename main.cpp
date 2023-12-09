@@ -8,29 +8,56 @@ ID2D1HwndRenderTarget *pRenderTarget = nullptr;
 ID2D1SolidColorBrush  *pBrush        = nullptr;
 
 struct Vector2d {
-    float x = 0;
-    float y = 0;
+    float x;
+    float y;
+
+    Vector2d() : x(0), y(0) {}
+
+    Vector2d(float x, float y) {
+        this->x = x;
+        this->y = y;
+    }
+
+    Vector2d operator+(float value) {
+        Vector2d result;
+        result.x = x + value;
+        result.y = y + value;
+
+        return result;
+    }
+
+    Vector2d operator+=(Vector2d value) {
+        x += value.x;
+        y += value.y;
+        return *this;
+    }
+
+    Vector2d operator*(float value) {
+        Vector2d result;
+        result.x = x * value;
+        result.y = y * value;
+
+        return result;
+    }
 };
 
 class Paddel {
 public:
-    float upperLeftX  = 50;
-    float upperLeftY  = 250;
-    float lowerRightX = 75;
-    float lowerRightY = 450;
+    Vector2d upperLeft;
+    Vector2d lowerRight;
     float speed       = 1;
     Vector2d velocity;
 
     D2D1_RECT_F getRect() {
-        return D2D1::RectF(upperLeftX, upperLeftY, lowerRightX, lowerRightY);
+        return D2D1::RectF(upperLeft.x, upperLeft.y, lowerRight.x, lowerRight.y);
     };
     
     Paddel() {};
     Paddel(float upperLeftX, float upperLeftY, float lowerRightX, float lowerRightY) {
-        this->upperLeftX  = upperLeftX;
-        this->upperLeftY  = upperLeftY;
-        this->lowerRightX = lowerRightX;
-        this->lowerRightY = lowerRightY;
+        this->upperLeft.x  = upperLeftX;
+        this->upperLeft.y  = upperLeftY;
+        this->lowerRight.x = lowerRightX;
+        this->lowerRight.y = lowerRightY;
     };
 };
 
@@ -48,11 +75,11 @@ public:
     };
 
     float getVelocityX() { return direction.x * speed; }
-    float getVelocityY() { return direction.y * speed; }
+    Vector2d getVelocity() { return direction * speed; }
 
     Ball() {
         direction.x = -1;
-        direction.y = 0;
+        direction.y = 0.2;
     }
 
     void resetPosition() {
@@ -63,7 +90,7 @@ public:
     };
 };
 
-Paddel paddel;
+Paddel paddel(50, 250, 75, 450);
 Paddel paddelNPC(1375, 250, 1400, 450);
 Ball   ball;
 
@@ -231,36 +258,37 @@ int WINAPI WinMain(HINSTANCE hInst,
         // update game state below
 
         // detect collision with player paddel
-        if (ball.upperLeftX <= paddel.lowerRightX &&
-            ball.lowerRightY >= paddel.upperLeftY &&
-            ball.upperLeftY <= paddel.lowerRightY) {
+        if (ball.upperLeftX  <= paddel.lowerRight.x &&
+            ball.lowerRightY >= paddel.upperLeft.y  &&
+            ball.upperLeftY  <= paddel.lowerRight.y) {
             ball.speed = -ball.speed;
         }
 
         // detect collision with npc paddel
-        if (ball.lowerRightX >= paddelNPC.upperLeftX &&
-            ball.lowerRightY >= paddelNPC.upperLeftY &&
-            ball.upperLeftY <= paddel.lowerRightY) {
+        if (ball.lowerRightX >= paddelNPC.upperLeft.x &&
+            ball.lowerRightY >= paddelNPC.upperLeft.y &&
+            ball.upperLeftY  <= paddel.lowerRight.y) {
             ball.speed = -ball.speed;
         }
 
         // handle ball going off screen
-        if (ball.lowerRightX < windowRect.left || ball.upperLeftX > windowRect.right ||
+        if (ball.lowerRightX < windowRect.left   || ball.upperLeftX > windowRect.right ||
             ball.lowerRightY > windowRect.bottom || ball.upperLeftY < windowRect.top) { 
             ball.resetPosition();
         }
 
-        paddel.upperLeftY  += paddel.velocity.y * deltaTime;
-        paddel.lowerRightY += paddel.velocity.y * deltaTime;
+        paddel.upperLeft  += paddel.velocity * deltaTime;
+        paddel.lowerRight += paddel.velocity * deltaTime;
 
-        paddelNPC.upperLeftY  += paddel.velocity.y * deltaTime;
-        paddelNPC.lowerRightY += paddel.velocity.y * deltaTime;
+        paddelNPC.upperLeft.y  += paddel.velocity.y * deltaTime;
+        paddelNPC.lowerRight.y += paddel.velocity.y * deltaTime;
         
-        ball.upperLeftX  += ball.getVelocityX() * deltaTime;
-        ball.lowerRightX += ball.getVelocityX() * deltaTime;
 
-        ball.upperLeftY += ball.getVelocityY() * deltaTime;
-        ball.lowerRightY += ball.getVelocityY() * deltaTime;
+        ball.upperLeftX  += ball.getVelocity().x * deltaTime;
+        ball.upperLeftY  += ball.getVelocity().y * deltaTime;
+
+        ball.lowerRightX += ball.getVelocity().x * deltaTime;
+        ball.lowerRightY += ball.getVelocity().y * deltaTime;
 
         render(hwnd);
     }
