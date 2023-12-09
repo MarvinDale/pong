@@ -190,11 +190,11 @@ int WINAPI WinMain(HINSTANCE hInst,
     ShowWindow(hwnd, cmdshow);
 
     // print window size on creation
-    RECT rect;
-    GetClientRect(hwnd, &rect);
+    RECT windowRect;
+    GetClientRect(hwnd, &windowRect);
 
-    std::cout << "top " << rect.top << "\nBottom " << rect.bottom
-              << "\nLeft " << rect.left << "\nRight " << rect.right;
+    std::cout << "top " << windowRect.top << "\nBottom " << windowRect.bottom
+              << "\nLeft " << windowRect.left << "\nRight " << windowRect.right;
 
     LARGE_INTEGER ticksPerSecond;
     LARGE_INTEGER previousTickCount;
@@ -244,7 +244,9 @@ int WINAPI WinMain(HINSTANCE hInst,
         }
 
         // handle ball going off screen
-        if (ball.lowerRightX < 0 || ball.upperLeftX > 1440) { ball.resetPosition(); }
+        if (ball.lowerRightX < windowRect.left || ball.upperLeftX > windowRect.right) { 
+            ball.resetPosition();
+        }
 
         paddel.upperLeftY  += paddel.velocity.y * deltaTime;
         paddel.lowerRightY += paddel.velocity.y * deltaTime;
