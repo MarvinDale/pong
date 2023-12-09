@@ -29,6 +29,7 @@ struct Vector2d {
     Vector2d operator+=(Vector2d value) {
         x += value.x;
         y += value.y;
+
         return *this;
     }
 
@@ -63,30 +64,24 @@ public:
 
 class Ball {
 public:
-    float upperLeftX  = 700;
-    float upperLeftY  = 250;
-    float lowerRightX = 725;
-    float lowerRightY = 275;
+    Vector2d upperLeft;
+    Vector2d lowerRight;
     float speed       = 0.5;
     Vector2d direction;
 
+    Ball() : direction(-1, 0.2), upperLeft(700, 250), lowerRight(725, 275) {}
+
     D2D1_RECT_F getRect() {
-        return D2D1::RectF(upperLeftX, upperLeftY, lowerRightX, lowerRightY);
+        return D2D1::RectF(upperLeft.x, upperLeft.y, lowerRight.x, lowerRight.y);
     };
 
-    float getVelocityX() { return direction.x * speed; }
     Vector2d getVelocity() { return direction * speed; }
 
-    Ball() {
-        direction.x = -1;
-        direction.y = 0.2;
-    }
-
     void resetPosition() {
-        upperLeftX  = 700;
-        upperLeftY  = 250;
-        lowerRightX = 725;
-        lowerRightY = 275;
+        upperLeft.x  = 700;
+        upperLeft.y  = 250;
+        lowerRight.x = 725;
+        lowerRight.y = 275;
     };
 };
 
@@ -258,22 +253,22 @@ int WINAPI WinMain(HINSTANCE hInst,
         // update game state below
 
         // detect collision with player paddel
-        if (ball.upperLeftX  <= paddel.lowerRight.x &&
-            ball.lowerRightY >= paddel.upperLeft.y  &&
-            ball.upperLeftY  <= paddel.lowerRight.y) {
+        if (ball.upperLeft.x  <= paddel.lowerRight.x &&
+            ball.lowerRight.y >= paddel.upperLeft.y  &&
+            ball.upperLeft.y  <= paddel.lowerRight.y) {
             ball.speed = -ball.speed;
         }
 
         // detect collision with npc paddel
-        if (ball.lowerRightX >= paddelNPC.upperLeft.x &&
-            ball.lowerRightY >= paddelNPC.upperLeft.y &&
-            ball.upperLeftY  <= paddel.lowerRight.y) {
+        if (ball.lowerRight.x >= paddelNPC.upperLeft.x &&
+            ball.lowerRight.y >= paddelNPC.upperLeft.y &&
+            ball.upperLeft.y  <= paddel.lowerRight.y) {
             ball.speed = -ball.speed;
         }
 
         // handle ball going off screen
-        if (ball.lowerRightX < windowRect.left   || ball.upperLeftX > windowRect.right ||
-            ball.lowerRightY > windowRect.bottom || ball.upperLeftY < windowRect.top) { 
+        if (ball.lowerRight.x < windowRect.left   || ball.upperLeft.x > windowRect.right ||
+            ball.lowerRight.y > windowRect.bottom || ball.upperLeft.y < windowRect.top) { 
             ball.resetPosition();
         }
 
@@ -282,13 +277,9 @@ int WINAPI WinMain(HINSTANCE hInst,
 
         paddelNPC.upperLeft.y  += paddel.velocity.y * deltaTime;
         paddelNPC.lowerRight.y += paddel.velocity.y * deltaTime;
-        
 
-        ball.upperLeftX  += ball.getVelocity().x * deltaTime;
-        ball.upperLeftY  += ball.getVelocity().y * deltaTime;
-
-        ball.lowerRightX += ball.getVelocity().x * deltaTime;
-        ball.lowerRightY += ball.getVelocity().y * deltaTime;
+        ball.upperLeft  += ball.getVelocity() * deltaTime;
+        ball.lowerRight += ball.getVelocity() * deltaTime;
 
         render(hwnd);
     }
