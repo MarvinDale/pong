@@ -48,6 +48,7 @@ public:
     };
 
     float getVelocityX() { return direction.x * speed; }
+    float getVelocityY() { return direction.y * speed; }
 
     Ball() {
         direction.x = -1;
@@ -244,7 +245,8 @@ int WINAPI WinMain(HINSTANCE hInst,
         }
 
         // handle ball going off screen
-        if (ball.lowerRightX < windowRect.left || ball.upperLeftX > windowRect.right) { 
+        if (ball.lowerRightX < windowRect.left || ball.upperLeftX > windowRect.right ||
+            ball.lowerRightY > windowRect.bottom || ball.upperLeftY < windowRect.top) { 
             ball.resetPosition();
         }
 
@@ -256,6 +258,9 @@ int WINAPI WinMain(HINSTANCE hInst,
         
         ball.upperLeftX  += ball.getVelocityX() * deltaTime;
         ball.lowerRightX += ball.getVelocityX() * deltaTime;
+
+        ball.upperLeftY += ball.getVelocityY() * deltaTime;
+        ball.lowerRightY += ball.getVelocityY() * deltaTime;
 
         render(hwnd);
     }
