@@ -97,8 +97,8 @@ void onKeyDown(WPARAM wParam) {
     WORD scanCode = MapVirtualKeyA(vkCode, MAPVK_VK_TO_VSC);
     
     if (vkCode == VK_ESCAPE)     { PostQuitMessage(0); }
-    if (scanCode == SCAN_CODE_W) { paddel.velocity.y = -paddel.speed; } // TODO: direction shouldn't be controlled by speed
-    if (scanCode == SCAN_CODE_S) { paddel.velocity.y =  paddel.speed; } //       speed is the magnatude, velocity is a dirction + magnatude
+    if (scanCode == SCAN_CODE_W) { paddel.velocity.y = -paddel.speed; }
+    if (scanCode == SCAN_CODE_S) { paddel.velocity.y =  paddel.speed; }
 }
 
 void render(HWND hwnd) {
@@ -272,11 +272,11 @@ int WINAPI WinMain(HINSTANCE hInst,
             ball.resetPosition();
         }
 
-        paddel.upperLeft  += paddel.velocity * deltaTime;
-        paddel.lowerRight += paddel.velocity * deltaTime;
+        paddel.upperLeft     += paddel.velocity * deltaTime;
+        paddel.lowerRight    += paddel.velocity * deltaTime;
 
-        paddelNPC.upperLeft.y  += paddel.velocity.y * deltaTime;
-        paddelNPC.lowerRight.y += paddel.velocity.y * deltaTime;
+        paddelNPC.upperLeft  += paddel.velocity * deltaTime;
+        paddelNPC.lowerRight += paddel.velocity * deltaTime;
 
         ball.upperLeft  += ball.getVelocity() * deltaTime;
         ball.lowerRight += ball.getVelocity() * deltaTime;
