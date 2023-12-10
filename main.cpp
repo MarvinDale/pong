@@ -69,7 +69,7 @@ public:
     float speed       = 0.5;
     Vector2d direction;
 
-    Ball() : direction(-1, 0.2), upperLeft(700, 250), lowerRight(725, 275) {}
+    Ball() :  upperLeft(700, 250), lowerRight(725, 275), direction(-1, 0.2) {}
 
     D2D1_RECT_F getRect() {
         return D2D1::RectF(upperLeft.x, upperLeft.y, lowerRight.x, lowerRight.y);
@@ -99,6 +99,37 @@ void onKeyDown(WPARAM wParam) {
     if (vkCode == VK_ESCAPE)     { PostQuitMessage(0); }
     if (scanCode == SCAN_CODE_W) { paddel.velocity.y = -paddel.speed; }
     if (scanCode == SCAN_CODE_S) { paddel.velocity.y =  paddel.speed; }
+}
+
+void update(float deltaTime, RECT windowRect) {
+        // detect collision with player paddel
+        if (ball.upperLeft.x  <= paddel.lowerRight.x &&
+            ball.lowerRight.y >= paddel.upperLeft.y  &&
+            ball.upperLeft.y  <= paddel.lowerRight.y) {
+            ball.speed = -ball.speed;
+        }
+
+        // detect collision with npc paddel
+        if (ball.lowerRight.x >= paddelNPC.upperLeft.x &&
+            ball.lowerRight.y >= paddelNPC.upperLeft.y &&
+            ball.upperLeft.y  <= paddel.lowerRight.y) {
+            ball.speed = -ball.speed;
+        }
+
+        // handle ball going off screen
+        if (ball.lowerRight.x < windowRect.left   || ball.upperLeft.x > windowRect.right ||
+            ball.lowerRight.y > windowRect.bottom || ball.upperLeft.y < windowRect.top) { 
+            ball.resetPosition();
+        }
+
+        paddel.upperLeft     += paddel.velocity * deltaTime;
+        paddel.lowerRight    += paddel.velocity * deltaTime;
+
+        paddelNPC.upperLeft  += paddel.velocity * deltaTime;
+        paddelNPC.lowerRight += paddel.velocity * deltaTime;
+
+        ball.upperLeft  += ball.getVelocity() * deltaTime;
+        ball.lowerRight += ball.getVelocity() * deltaTime;
 }
 
 void render(HWND hwnd) {
@@ -251,36 +282,7 @@ int WINAPI WinMain(HINSTANCE hInst,
         previousTickCount = currentTickCount;
 
         // update game state below
-
-        // detect collision with player paddel
-        if (ball.upperLeft.x  <= paddel.lowerRight.x &&
-            ball.lowerRight.y >= paddel.upperLeft.y  &&
-            ball.upperLeft.y  <= paddel.lowerRight.y) {
-            ball.speed = -ball.speed;
-        }
-
-        // detect collision with npc paddel
-        if (ball.lowerRight.x >= paddelNPC.upperLeft.x &&
-            ball.lowerRight.y >= paddelNPC.upperLeft.y &&
-            ball.upperLeft.y  <= paddel.lowerRight.y) {
-            ball.speed = -ball.speed;
-        }
-
-        // handle ball going off screen
-        if (ball.lowerRight.x < windowRect.left   || ball.upperLeft.x > windowRect.right ||
-            ball.lowerRight.y > windowRect.bottom || ball.upperLeft.y < windowRect.top) { 
-            ball.resetPosition();
-        }
-
-        paddel.upperLeft     += paddel.velocity * deltaTime;
-        paddel.lowerRight    += paddel.velocity * deltaTime;
-
-        paddelNPC.upperLeft  += paddel.velocity * deltaTime;
-        paddelNPC.lowerRight += paddel.velocity * deltaTime;
-
-        ball.upperLeft  += ball.getVelocity() * deltaTime;
-        ball.lowerRight += ball.getVelocity() * deltaTime;
-
+        update(deltaTime, windowRect);
         render(hwnd);
     }
     return 0;
