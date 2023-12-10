@@ -66,7 +66,7 @@ class Ball {
 public:
     Vector2d upperLeft;
     Vector2d lowerRight;
-    float speed       = 0.5;
+    float speed       = 1;
     Vector2d direction;
 
     Ball() :  upperLeft(700, 250), lowerRight(725, 275), direction(-1, 0.2) {}
@@ -102,34 +102,37 @@ void onKeyDown(WPARAM wParam) {
 }
 
 void update(float deltaTime, RECT windowRect) {
-        // detect collision with player paddel
-        if (ball.upperLeft.x  <= paddel.lowerRight.x &&
-            ball.lowerRight.y >= paddel.upperLeft.y  &&
-            ball.upperLeft.y  <= paddel.lowerRight.y) {
-            ball.speed = -ball.speed;
-        }
+    // detect collision with player paddel
+    if (ball.upperLeft.x  <= paddel.lowerRight.x &&
+        ball.lowerRight.y >= paddel.upperLeft.y  &&
+        ball.upperLeft.y  <= paddel.lowerRight.y) {
+        ball.direction.x = -ball.direction.x;
+    }
 
-        // detect collision with npc paddel
-        if (ball.lowerRight.x >= paddelNPC.upperLeft.x &&
-            ball.lowerRight.y >= paddelNPC.upperLeft.y &&
-            ball.upperLeft.y  <= paddel.lowerRight.y) {
-            ball.speed = -ball.speed;
-        }
+    // detect collision with npc paddel
+    if (ball.lowerRight.x >= paddelNPC.upperLeft.x &&
+        ball.lowerRight.y >= paddelNPC.upperLeft.y &&
+        ball.upperLeft.y  <= paddel.lowerRight.y) {
+        ball.direction.x = -ball.direction.x;
+    }
 
-        // handle ball going off screen
-        if (ball.lowerRight.x < windowRect.left   || ball.upperLeft.x > windowRect.right ||
-            ball.lowerRight.y > windowRect.bottom || ball.upperLeft.y < windowRect.top) { 
-            ball.resetPosition();
-        }
+    // handle ball going off screen
+    if (ball.lowerRight.x < windowRect.left || ball.upperLeft.x > windowRect.right) { 
+        ball.resetPosition();
+    }
+    
+    if (ball.lowerRight.y > windowRect.bottom || ball.upperLeft.y < windowRect.top) {
+        ball.direction.y = -ball.direction.y;
+    }
 
-        paddel.upperLeft     += paddel.velocity * deltaTime;
-        paddel.lowerRight    += paddel.velocity * deltaTime;
+    paddel.upperLeft     += paddel.velocity * deltaTime;
+    paddel.lowerRight    += paddel.velocity * deltaTime;
 
-        paddelNPC.upperLeft  += paddel.velocity * deltaTime;
-        paddelNPC.lowerRight += paddel.velocity * deltaTime;
+    paddelNPC.upperLeft  += paddel.velocity * deltaTime;
+    paddelNPC.lowerRight += paddel.velocity * deltaTime;
 
-        ball.upperLeft  += ball.getVelocity() * deltaTime;
-        ball.lowerRight += ball.getVelocity() * deltaTime;
+    ball.upperLeft  += ball.getVelocity() * deltaTime;
+    ball.lowerRight += ball.getVelocity() * deltaTime;
 }
 
 void render(HWND hwnd) {
@@ -162,7 +165,7 @@ void render(HWND hwnd) {
         pRenderTarget->FillRectangle(ball.getRect(),      pBrush);
         hr = pRenderTarget->EndDraw();
 
-        if (FAILED(hr) || hr == D2DERR_RECREATE_TARGET) {
+        if (FAILED(hr) || hr == (long) D2DERR_RECREATE_TARGET) {
             //DisgardGraphicsResources
             pRenderTarget->Release();
             pBrush->Release();
