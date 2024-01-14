@@ -237,7 +237,7 @@ int WINAPI WinMain(HINSTANCE hInst,
         "Window Class",
         "Pong",
         (WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX),
-        CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
+        CW_USEDEFAULT, CW_USEDEFAULT, 1920, 1080,
         NULL,
         NULL,
         hInst,
@@ -251,9 +251,6 @@ int WINAPI WinMain(HINSTANCE hInst,
     // print window size on creation
     RECT windowRect;
     GetClientRect(hwnd, &windowRect);
-
-    std::cout << "top " << windowRect.top << "\nBottom " << windowRect.bottom
-              << "\nLeft " << windowRect.left << "\nRight " << windowRect.right;
 
     LARGE_INTEGER ticksPerSecond;
     LARGE_INTEGER previousTickCount;
