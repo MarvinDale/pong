@@ -43,7 +43,7 @@ struct Vector2d {
     }
 };
 
-class Paddel {
+class Paddle {
 public:
     Vector2d upperLeft;
     Vector2d lowerRight;
@@ -54,8 +54,8 @@ public:
         return D2D1::RectF(upperLeft.x, upperLeft.y, lowerRight.x, lowerRight.y);
     };
     
-    Paddel() {};
-    Paddel(float upperLeftX, float upperLeftY, float lowerRightX, float lowerRightY) {
+    Paddle() {};
+    Paddle(float upperLeftX, float upperLeftY, float lowerRightX, float lowerRightY) {
         this->upperLeft.x  = upperLeftX;
         this->upperLeft.y  = upperLeftY;
         this->lowerRight.x = lowerRightX;
@@ -86,8 +86,8 @@ public:
     };
 };
 
-Paddel paddel(50, 250, 75, 450);
-Paddel paddelNPC(1375, 250, 1400, 450);
+Paddle paddle(50, 250, 75, 450);
+Paddle paddleNPC(1375, 250, 1400, 450);
 Ball   ball;
 
 const WORD SCAN_CODE_W = 17;
@@ -98,22 +98,22 @@ void onKeyDown(WPARAM wParam) {
     WORD scanCode = MapVirtualKeyA(vkCode, MAPVK_VK_TO_VSC);
     
     if (vkCode == VK_ESCAPE)     { PostQuitMessage(0); }
-    if (scanCode == SCAN_CODE_W) { paddel.velocity.y = -paddel.speed; }
-    if (scanCode == SCAN_CODE_S) { paddel.velocity.y =  paddel.speed; }
+    if (scanCode == SCAN_CODE_W) { paddle.velocity.y = -paddle.speed; }
+    if (scanCode == SCAN_CODE_S) { paddle.velocity.y =  paddle.speed; }
 }
 
 void update(float deltaTime, RECT windowRect) {
-    // detect collision with player paddel
-    if (ball.upperLeft.x  <= paddel.lowerRight.x &&
-        ball.lowerRight.y >= paddel.upperLeft.y  &&
-        ball.upperLeft.y  <= paddel.lowerRight.y) {
+    // detect collision with player paddle
+    if (ball.upperLeft.x  <= paddle.lowerRight.x &&
+        ball.lowerRight.y >= paddle.upperLeft.y  &&
+        ball.upperLeft.y  <= paddle.lowerRight.y) {
         ball.direction.x = -ball.direction.x;
     }
 
-    // detect collision with npc paddel
-    if (ball.lowerRight.x >= paddelNPC.upperLeft.x &&
-        ball.lowerRight.y >= paddelNPC.upperLeft.y &&
-        ball.upperLeft.y  <= paddel.lowerRight.y) {
+    // detect collision with npc paddle
+    if (ball.lowerRight.x >= paddleNPC.upperLeft.x &&
+        ball.lowerRight.y >= paddleNPC.upperLeft.y &&
+        ball.upperLeft.y  <= paddle.lowerRight.y) {
         ball.direction.x = -ball.direction.x;
     }
 
@@ -127,11 +127,11 @@ void update(float deltaTime, RECT windowRect) {
         ball.direction.y = -ball.direction.y;
     }
 
-    paddel.upperLeft     += paddel.velocity * deltaTime;
-    paddel.lowerRight    += paddel.velocity * deltaTime;
+    paddle.upperLeft     += paddle.velocity * deltaTime;
+    paddle.lowerRight    += paddle.velocity * deltaTime;
 
-    paddelNPC.upperLeft  += paddel.velocity * deltaTime;
-    paddelNPC.lowerRight += paddel.velocity * deltaTime;
+    paddleNPC.upperLeft  += paddle.velocity * deltaTime;
+    paddleNPC.lowerRight += paddle.velocity * deltaTime;
 
     ball.upperLeft  += ball.getVelocity() * deltaTime;
     ball.lowerRight += ball.getVelocity() * deltaTime;
@@ -162,13 +162,13 @@ void render(HWND hwnd) {
 
         pRenderTarget->BeginDraw();
         pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF::DarkSeaGreen));
-        pRenderTarget->FillRectangle(paddel.getRect(),    pBrush);
-        pRenderTarget->FillRectangle(paddelNPC.getRect(), pBrush);
+        pRenderTarget->FillRectangle(paddle.getRect(),    pBrush);
+        pRenderTarget->FillRectangle(paddleNPC.getRect(), pBrush);
         pRenderTarget->FillRectangle(ball.getRect(),      pBrush);
         hr = pRenderTarget->EndDraw();
 
         if (FAILED(hr) || hr == (long) D2DERR_RECREATE_TARGET) {
-            //DisgardGraphicsResources
+            //DiscardGraphicsResources
             pRenderTarget->Release();
             pBrush->Release();
             pFactory->Release();
@@ -198,8 +198,8 @@ WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             WORD vkCode = LOWORD(wParam);
             WORD scanCode = MapVirtualKeyA(vkCode, MAPVK_VK_TO_VSC);
             
-            if (scanCode == SCAN_CODE_W) { paddel.velocity.y = 0; } 
-            if (scanCode == SCAN_CODE_S) { paddel.velocity.y = 0; } 
+            if (scanCode == SCAN_CODE_W) { paddle.velocity.y = 0; } 
+            if (scanCode == SCAN_CODE_S) { paddle.velocity.y = 0; } 
         } break;
 
         case WM_KEYDOWN:
