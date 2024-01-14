@@ -1,6 +1,7 @@
 #include <windows.h>
 #include <winuser.h>
 #include <d2d1.h>
+#include <stdint.h>
 #include <iostream>
 
 ID2D1Factory          *pFactory      = nullptr;
