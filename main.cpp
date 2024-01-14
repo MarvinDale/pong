@@ -66,7 +66,7 @@ class Ball {
 public:
     Vector2d upperLeft;
     Vector2d lowerRight;
-    float speed       = 1;
+    float speed = 1;
     Vector2d direction;
 
     Ball() :  upperLeft(700, 250), lowerRight(725, 275), direction(-1, 0.2) {}
@@ -121,6 +121,7 @@ void update(float deltaTime, RECT windowRect) {
         ball.resetPosition();
     }
     
+    // bounce the ball off the top and bottom of the screen
     if (ball.lowerRight.y > windowRect.bottom || ball.upperLeft.y < windowRect.top) {
         ball.direction.y = -ball.direction.y;
     }
