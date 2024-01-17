@@ -8,6 +8,11 @@ ID2D1Factory          *pFactory      = nullptr;
 ID2D1HwndRenderTarget *pRenderTarget = nullptr;
 ID2D1SolidColorBrush  *pBrush        = nullptr;
 
+int const WINDOW_WIDTH = 1920;
+int const WINDOW_HIGHT = 1080;
+int const WINDOW_CENTER_Y = WINDOW_HIGHT / 2;
+int const WINDOW_CENTER_X = WINDOW_WIDTH / 2;
+
 struct Vector2d {
     float x;
     float y;
@@ -47,7 +52,7 @@ class Paddle {
 public:
     Vector2d upperLeft;
     Vector2d lowerRight;
-    float speed       = 1;
+    float speed = 1;
     Vector2d velocity;
 
     D2D1_RECT_F getRect() {
@@ -65,12 +70,18 @@ public:
 
 class Ball {
 public:
-    Vector2d upperLeft;
-    Vector2d lowerRight;
-    float speed = 1;
-    Vector2d direction;
+    Vector2d  upperLeft;
+    Vector2d  lowerRight;
+    float     speed;
+    const int HALF_WIDTH;
+    Vector2d  direction;
 
-    Ball() :  upperLeft(700, 250), lowerRight(725, 275), direction(-1, 0.2) {}
+    Ball() : HALF_WIDTH(12), speed(1), direction(-1, 0.2) {
+        upperLeft.x  = WINDOW_CENTER_X - HALF_WIDTH;
+        upperLeft.y  = WINDOW_CENTER_Y - HALF_WIDTH;
+        lowerRight.x = WINDOW_CENTER_X + HALF_WIDTH;
+        lowerRight.y = WINDOW_CENTER_Y + HALF_WIDTH;
+    }
 
     D2D1_RECT_F getRect() {
         return D2D1::RectF(upperLeft.x, upperLeft.y, lowerRight.x, lowerRight.y);
@@ -79,16 +90,21 @@ public:
     Vector2d getVelocity() { return direction * speed; }
 
     void resetPosition() {
-        upperLeft.x  = 700;
-        upperLeft.y  = 250;
-        lowerRight.x = 725;
-        lowerRight.y = 275;
+        upperLeft.x  = WINDOW_CENTER_X - HALF_WIDTH;
+        upperLeft.y  = WINDOW_CENTER_Y - HALF_WIDTH;
+        lowerRight.x = WINDOW_CENTER_X + HALF_WIDTH;
+        lowerRight.y = WINDOW_CENTER_Y + HALF_WIDTH;
     };
 };
 
-Paddle paddle(50, 250, 75, 450);
-Paddle paddleNPC(1375, 250, 1400, 450);
-Ball   ball;
+Paddle paddle(100, WINDOW_CENTER_Y - 100, 125, WINDOW_CENTER_Y + 100);
+Paddle paddleNPC(WINDOW_WIDTH - 125,
+                 WINDOW_CENTER_Y - 100,
+                 WINDOW_WIDTH - 100,
+                 WINDOW_CENTER_Y + 100
+       );
+
+Ball ball;
 
 const WORD SCAN_CODE_W = 17;
 const WORD SCAN_CODE_S = 31;
@@ -113,7 +129,7 @@ void update(float deltaTime, RECT windowRect) {
     // detect collision with npc paddle
     if (ball.lowerRight.x >= paddleNPC.upperLeft.x &&
         ball.lowerRight.y >= paddleNPC.upperLeft.y &&
-        ball.upperLeft.y  <= paddle.lowerRight.y) {
+        ball.upperLeft.y  <= paddleNPC.lowerRight.y) {
         ball.direction.x = -ball.direction.x;
     }
 
@@ -209,7 +225,7 @@ WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
         case WM_CLOSE:
         {
-           DestroyWindow(hwnd); 
+            DestroyWindow(hwnd); 
         } break;
         
         case WM_DESTROY:
@@ -237,7 +253,8 @@ int WINAPI WinMain(HINSTANCE hInst,
         "Window Class",
         "Pong",
         (WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX),
-        CW_USEDEFAULT, CW_USEDEFAULT, 1920, 1080,
+        CW_USEDEFAULT, CW_USEDEFAULT,
+        WINDOW_WIDTH, WINDOW_HIGHT,
         NULL,
         NULL,
         hInst,
