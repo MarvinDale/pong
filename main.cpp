@@ -1,12 +1,17 @@
 #include <windows.h>
 #include <winuser.h>
 #include <d2d1.h>
+#include <dwrite.h>
 #include <stdint.h>
 #include <iostream>
+#include <string>
 
-ID2D1Factory          *pFactory      = nullptr;
-ID2D1HwndRenderTarget *pRenderTarget = nullptr;
-ID2D1SolidColorBrush  *pBrush        = nullptr;
+ID2D1Factory          *pFactory       = nullptr;
+ID2D1HwndRenderTarget *pRenderTarget  = nullptr;
+ID2D1SolidColorBrush  *pBrush         = nullptr;
+ID2D1SolidColorBrush  *pTextBrush     = nullptr;
+IDWriteFactory        *pDWriteFactory = nullptr;
+IDWriteTextFormat     *pTextFormat    = nullptr;
 
 int const WINDOW_WIDTH = 1920;
 int const WINDOW_HIGHT = 1080;
@@ -72,11 +77,11 @@ class Ball {
 public:
     Vector2d  upperLeft;
     Vector2d  lowerRight;
-    float     speed;
-    const int HALF_WIDTH;
+    float     speed = 1;
+    const int HALF_WIDTH = 12;
     Vector2d  direction;
 
-    Ball() : HALF_WIDTH(12), speed(1), direction(-1, 0.2) {
+    Ball() : direction(-1, 0.4) {
         upperLeft.x  = WINDOW_CENTER_X - HALF_WIDTH;
         upperLeft.y  = WINDOW_CENTER_Y - HALF_WIDTH;
         lowerRight.x = WINDOW_CENTER_X + HALF_WIDTH;
@@ -96,6 +101,15 @@ public:
         lowerRight.y = WINDOW_CENTER_Y + HALF_WIDTH;
     };
 };
+
+struct Score {
+    D2D_RECT_F playerRect = D2D1::RectF(WINDOW_CENTER_X - 300,  100, WINDOW_CENTER_X - 150, 250);
+    D2D_RECT_F npcRect    = D2D1::RectF(WINDOW_CENTER_X + 150 , 100, WINDOW_CENTER_X + 300, 250);
+    int player = 0;
+    int npc    = 0;
+};
+
+Score score;
 
 Paddle paddle(100, WINDOW_CENTER_Y - 100, 125, WINDOW_CENTER_Y + 100);
 Paddle paddleNPC(WINDOW_WIDTH - 125,
@@ -133,9 +147,18 @@ void update(float deltaTime, RECT windowRect) {
         ball.direction.x = -ball.direction.x;
     }
 
-    // handle ball going off screen
-    if (ball.lowerRight.x < windowRect.left || ball.upperLeft.x > windowRect.right) { 
+    // handle ball going off screen left
+    if (ball.lowerRight.x < windowRect.left) {
+        score.npc++;
         ball.resetPosition();
+        ball.direction.x = -ball.direction.x;
+    }
+
+    // handle ball going off screen right
+    if (ball.upperLeft.x > windowRect.right) {
+        score.player++;
+        ball.resetPosition();
+        ball.direction.x = -ball.direction.x;
     }
     
     // bounce the ball off the top and bottom of the screen
@@ -181,6 +204,22 @@ void render(HWND hwnd) {
         pRenderTarget->FillRectangle(paddle.getRect(),    pBrush);
         pRenderTarget->FillRectangle(paddleNPC.getRect(), pBrush);
         pRenderTarget->FillRectangle(ball.getRect(),      pBrush);
+
+        std::wstring playerScoreText = std::to_wstring(score.player);
+        std::wstring npcScoreText    = std::to_wstring(score.npc);
+        pRenderTarget->DrawText(playerScoreText.c_str(),
+                                playerScoreText.length(), 
+                                pTextFormat,
+                                score.playerRect,
+                                pBrush
+        );
+        pRenderTarget->DrawText(npcScoreText.c_str(),
+                                npcScoreText.length(),
+                                pTextFormat,
+                                score.npcRect,
+                                pBrush
+        );
+
         hr = pRenderTarget->EndDraw();
 
         if (FAILED(hr) || hr == (long) D2DERR_RECREATE_TARGET) {
@@ -207,6 +246,17 @@ WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                     D2D1_FACTORY_TYPE_SINGLE_THREADED, &pFactory))) {
                 return -1;
             }
+
+            DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory), reinterpret_cast<IUnknown**>(&pDWriteFactory));
+            pDWriteFactory->CreateTextFormat(
+                L"Arial",
+                nullptr,
+                DWRITE_FONT_WEIGHT_NORMAL,
+                DWRITE_FONT_STYLE_NORMAL,
+                DWRITE_FONT_STRETCH_NORMAL,
+                100.0f,
+                L"en-US",
+                &pTextFormat);
         } break;
 
         case WM_KEYUP:

@@ -1,10 +1,10 @@
 default: build run
 
 build:
-	g++ -Wall main.cpp -ld2d1 -o main.exe
+	g++ -Wall main.cpp -ld2d1 -ldwrite -o main.exe
 
 debug:
-	g++ -ggdb -Wall main.cpp -ld2d1 -o main.exe
+	g++ -ggdb -Wall main.cpp -ld2d1 -ldwrite -o main.exe
 
 run:
 	./main.exe
