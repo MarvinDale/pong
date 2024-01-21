@@ -9,7 +9,6 @@
 ID2D1Factory          *pFactory       = nullptr;
 ID2D1HwndRenderTarget *pRenderTarget  = nullptr;
 ID2D1SolidColorBrush  *pBrush         = nullptr;
-ID2D1SolidColorBrush  *pTextBrush     = nullptr;
 IDWriteFactory        *pDWriteFactory = nullptr;
 IDWriteTextFormat     *pTextFormat    = nullptr;
 
@@ -21,6 +20,10 @@ int const WINDOW_CENTER_X = WINDOW_WIDTH / 2;
 struct Vector2d {
     float x;
     float y;
+
+    static Vector2d up()   { return Vector2d(0, -1); }
+    static Vector2d down() { return Vector2d(0,  1); }
+    static Vector2d zero() { return Vector2d(0,  0); }
 
     Vector2d() : x(0), y(0) {}
 
@@ -58,6 +61,7 @@ public:
     Vector2d upperLeft;
     Vector2d lowerRight;
     float speed = 1;
+    float length;
     Vector2d velocity;
 
     D2D1_RECT_F getRect() {
@@ -70,6 +74,7 @@ public:
         this->upperLeft.y  = upperLeftY;
         this->lowerRight.x = lowerRightX;
         this->lowerRight.y = lowerRightY;
+        length = lowerRightY - upperLeftY;
     };
 };
 
@@ -103,8 +108,12 @@ public:
 };
 
 struct Score {
-    D2D_RECT_F playerRect = D2D1::RectF(WINDOW_CENTER_X - 300,  100, WINDOW_CENTER_X - 150, 250);
-    D2D_RECT_F npcRect    = D2D1::RectF(WINDOW_CENTER_X + 150 , 100, WINDOW_CENTER_X + 300, 250);
+    D2D_RECT_F playerRect =
+        D2D1::RectF(WINDOW_CENTER_X - 300, 100, WINDOW_CENTER_X - 150, 250);
+
+    D2D_RECT_F npcRect =
+        D2D1::RectF(WINDOW_CENTER_X + 150, 100, WINDOW_CENTER_X + 300, 250);
+
     int player = 0;
     int npc    = 0;
 };
@@ -128,8 +137,8 @@ void onKeyDown(WPARAM wParam) {
     WORD scanCode = MapVirtualKeyA(vkCode, MAPVK_VK_TO_VSC);
     
     if (vkCode == VK_ESCAPE)     { PostQuitMessage(0); }
-    if (scanCode == SCAN_CODE_W) { paddle.velocity.y = -paddle.speed; }
-    if (scanCode == SCAN_CODE_S) { paddle.velocity.y =  paddle.speed; }
+    if (scanCode == SCAN_CODE_W) { paddle.velocity = Vector2d::up()   * paddle.speed; }
+    if (scanCode == SCAN_CODE_S) { paddle.velocity = Vector2d::down() * paddle.speed; }
 }
 
 void update(float deltaTime, RECT windowRect) {
@@ -165,13 +174,37 @@ void update(float deltaTime, RECT windowRect) {
     if (ball.lowerRight.y > windowRect.bottom || ball.upperLeft.y < windowRect.top) {
         ball.direction.y = -ball.direction.y;
     }
-
+    
+    // update paddle position
     paddle.upperLeft     += paddle.velocity * deltaTime;
     paddle.lowerRight    += paddle.velocity * deltaTime;
 
     paddleNPC.upperLeft  += paddle.velocity * deltaTime;
     paddleNPC.lowerRight += paddle.velocity * deltaTime;
+    
+    // if a paddle goes off the top of the screen reset it's position to be at the edge of the screen
+    if (paddle.upperLeft.y < 0) {
+        paddle.upperLeft.y  = 0;
+        paddle.lowerRight.y = paddle.length;
+    } 
 
+    if (paddleNPC.upperLeft.y < 0) {
+        paddleNPC.upperLeft.y  = 0;
+        paddleNPC.lowerRight.y = paddleNPC.length;
+    } 
+
+    // if a paddle goes off the bottom of the screen reset it's position to be at the edge of the screen
+    if (paddle.lowerRight.y > WINDOW_HIGHT) {
+        paddle.lowerRight.y  = WINDOW_HIGHT;
+        paddle.upperLeft.y   = WINDOW_HIGHT - paddle.length;
+    } 
+
+    if (paddleNPC.lowerRight.y > WINDOW_HIGHT) {
+        paddleNPC.lowerRight.y  = WINDOW_HIGHT;
+        paddleNPC.upperLeft.y   = WINDOW_HIGHT - paddleNPC.length;
+    } 
+
+    // update ball position
     ball.upperLeft  += ball.getVelocity() * deltaTime;
     ball.lowerRight += ball.getVelocity() * deltaTime;
 }
@@ -249,7 +282,7 @@ WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
             DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory), reinterpret_cast<IUnknown**>(&pDWriteFactory));
             pDWriteFactory->CreateTextFormat(
-                L"Arial",
+                L"Lucida Console",
                 nullptr,
                 DWRITE_FONT_WEIGHT_NORMAL,
                 DWRITE_FONT_STYLE_NORMAL,
@@ -264,8 +297,8 @@ WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             WORD vkCode = LOWORD(wParam);
             WORD scanCode = MapVirtualKeyA(vkCode, MAPVK_VK_TO_VSC);
             
-            if (scanCode == SCAN_CODE_W) { paddle.velocity.y = 0; } 
-            if (scanCode == SCAN_CODE_S) { paddle.velocity.y = 0; } 
+            if (scanCode == SCAN_CODE_W) { paddle.velocity = Vector2d::zero(); } 
+            if (scanCode == SCAN_CODE_S) { paddle.velocity = Vector2d::zero(); } 
         } break;
 
         case WM_KEYDOWN:
