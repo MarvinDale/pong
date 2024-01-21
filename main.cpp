@@ -6,16 +6,26 @@
 #include <iostream>
 #include <string>
 
-ID2D1Factory          *pFactory       = nullptr;
-ID2D1HwndRenderTarget *pRenderTarget  = nullptr;
-ID2D1SolidColorBrush  *pBrush         = nullptr;
-IDWriteFactory        *pDWriteFactory = nullptr;
-IDWriteTextFormat     *pTextFormat    = nullptr;
+ID2D1Factory          *pFactory          = nullptr;
+ID2D1HwndRenderTarget *pRenderTarget     = nullptr;
+ID2D1SolidColorBrush  *pBrush            = nullptr;
+IDWriteFactory        *pDWriteFactory    = nullptr;
+IDWriteTextFormat     *pScoreTextFormat  = nullptr;
+IDWriteTextFormat     *pPausedTextFormat = nullptr;
+
+bool paused = false;
 
 int const WINDOW_WIDTH = 1920;
 int const WINDOW_HIGHT = 1080;
 int const WINDOW_CENTER_Y = WINDOW_HIGHT / 2;
 int const WINDOW_CENTER_X = WINDOW_WIDTH / 2;
+
+D2D1_RECT_F pausedRect = D2D1::RectF(
+    WINDOW_CENTER_X - 50,
+    WINDOW_CENTER_Y - 50,
+    WINDOW_CENTER_X + 50,
+    WINDOW_CENTER_Y + 50
+); 
 
 struct Vector2d {
     float x;
@@ -120,12 +130,12 @@ struct Score {
 
 Score score;
 
-Paddle paddle(100, WINDOW_CENTER_Y - 100, 125, WINDOW_CENTER_Y + 100);
-Paddle paddleNPC(WINDOW_WIDTH - 125,
+Paddle paddle(200, WINDOW_CENTER_Y - 100, 225, WINDOW_CENTER_Y + 100);
+Paddle paddleNPC(WINDOW_WIDTH - 225,
                  WINDOW_CENTER_Y - 100,
-                 WINDOW_WIDTH - 100,
+                 WINDOW_WIDTH - 200,
                  WINDOW_CENTER_Y + 100
-       );
+);
 
 Ball ball;
 
@@ -136,12 +146,18 @@ void onKeyDown(WPARAM wParam) {
     WORD vkCode   = LOWORD(wParam);
     WORD scanCode = MapVirtualKeyA(vkCode, MAPVK_VK_TO_VSC);
     
-    if (vkCode == VK_ESCAPE)     { PostQuitMessage(0); }
+    if (vkCode == VK_ESCAPE)     { 
+        if (paused) { paused = false; }
+        else        { paused = true;  }
+    }
     if (scanCode == SCAN_CODE_W) { paddle.velocity = Vector2d::up()   * paddle.speed; }
     if (scanCode == SCAN_CODE_S) { paddle.velocity = Vector2d::down() * paddle.speed; }
 }
 
 void update(float deltaTime, RECT windowRect) {
+
+    if (paused) { return; }
+
     // detect collision with player paddle
     if (ball.upperLeft.x  <= paddle.lowerRight.x &&
         ball.lowerRight.y >= paddle.upperLeft.y  &&
@@ -233,22 +249,32 @@ void render(HWND hwnd) {
         BeginPaint(hwnd, &paintStruct);
 
         pRenderTarget->BeginDraw();
-        pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF::DarkSeaGreen));
+        pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF::DarkCyan));
         pRenderTarget->FillRectangle(paddle.getRect(),    pBrush);
         pRenderTarget->FillRectangle(paddleNPC.getRect(), pBrush);
         pRenderTarget->FillRectangle(ball.getRect(),      pBrush);
 
         std::wstring playerScoreText = std::to_wstring(score.player);
         std::wstring npcScoreText    = std::to_wstring(score.npc);
+
+        if (paused) {
+            std::wstring pausedText = L"Paused";
+            pRenderTarget->DrawText(pausedText.c_str(),
+                                    pausedText.length(),
+                                    pPausedTextFormat,
+                                    pausedRect,
+                                    pBrush
+        );
+        }
         pRenderTarget->DrawText(playerScoreText.c_str(),
                                 playerScoreText.length(), 
-                                pTextFormat,
+                                pScoreTextFormat,
                                 score.playerRect,
                                 pBrush
         );
         pRenderTarget->DrawText(npcScoreText.c_str(),
                                 npcScoreText.length(),
-                                pTextFormat,
+                                pScoreTextFormat,
                                 score.npcRect,
                                 pBrush
         );
@@ -256,7 +282,7 @@ void render(HWND hwnd) {
         hr = pRenderTarget->EndDraw();
 
         if (FAILED(hr) || hr == (long) D2DERR_RECREATE_TARGET) {
-            //DiscardGraphicsResources
+            // DiscardGraphicsResources
             pRenderTarget->Release();
             pBrush->Release();
             pFactory->Release();
@@ -280,7 +306,10 @@ WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 return -1;
             }
 
-            DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory), reinterpret_cast<IUnknown**>(&pDWriteFactory));
+            DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED,
+                                __uuidof(IDWriteFactory),
+                                reinterpret_cast<IUnknown**>(&pDWriteFactory)
+            );
             pDWriteFactory->CreateTextFormat(
                 L"Lucida Console",
                 nullptr,
@@ -289,7 +318,21 @@ WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 DWRITE_FONT_STRETCH_NORMAL,
                 100.0f,
                 L"en-US",
-                &pTextFormat);
+                &pScoreTextFormat
+            );
+            pScoreTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+
+            pDWriteFactory->CreateTextFormat(
+                L"Lucida Console",
+                nullptr,
+                DWRITE_FONT_WEIGHT_NORMAL,
+                DWRITE_FONT_STYLE_NORMAL,
+                DWRITE_FONT_STRETCH_NORMAL,
+                20.0f,
+                L"en-US",
+                &pPausedTextFormat
+            );
+            pPausedTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
         } break;
 
         case WM_KEYUP:
