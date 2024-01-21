@@ -10,20 +10,21 @@ ID2D1Factory          *pFactory          = nullptr;
 ID2D1HwndRenderTarget *pRenderTarget     = nullptr;
 ID2D1SolidColorBrush  *pBrush            = nullptr;
 IDWriteFactory        *pDWriteFactory    = nullptr;
-IDWriteTextFormat     *pScoreTextFormat  = nullptr;
+IDWriteTextFormat     *pMenuTextFormat   = nullptr;
 IDWriteTextFormat     *pPausedTextFormat = nullptr;
 
-bool paused = false;
+bool gameIsPaused   = false;
+bool gameHasStarted = false;
 
-int const WINDOW_WIDTH = 1920;
+int const WINDOW_WIDTH  = 1920;
 int const WINDOW_HEIGHT = 1080;
 int const WINDOW_CENTER_Y = WINDOW_HEIGHT / 2;
 int const WINDOW_CENTER_X = WINDOW_WIDTH / 2;
 
 D2D1_RECT_F pausedRect = D2D1::RectF(
-    WINDOW_CENTER_X - 50,
+    WINDOW_CENTER_X - 150,
     WINDOW_CENTER_Y - 50,
-    WINDOW_CENTER_X + 50,
+    WINDOW_CENTER_X + 150,
     WINDOW_CENTER_Y + 50
 ); 
 
@@ -153,9 +154,14 @@ void onKeyDown(WPARAM wParam) {
     WORD vkCode   = LOWORD(wParam);
     WORD scanCode = MapVirtualKeyA(vkCode, MAPVK_VK_TO_VSC);
     
-    if (vkCode == VK_ESCAPE)     { 
-        if (paused) { paused = false; }
-        else        { paused = true;  }
+    if (vkCode == VK_ESCAPE) { 
+        if (gameHasStarted) {
+            if (gameIsPaused) { gameIsPaused = false; }
+            else { gameIsPaused = true; }
+        }
+    }
+    if (vkCode == VK_SPACE) { 
+        if (!gameHasStarted) { gameHasStarted = true; }
     }
     if (scanCode == SCAN_CODE_W) { paddle.velocity = Vector2d::up()   * paddle.speed; }
     if (scanCode == SCAN_CODE_S) { paddle.velocity = Vector2d::down() * paddle.speed; }
@@ -163,7 +169,8 @@ void onKeyDown(WPARAM wParam) {
 
 void update(float deltaTime, RECT windowRect) {
 
-    if (paused) { return; }
+    if (!gameHasStarted) { return; }
+    if (gameIsPaused)    { return; }
 
     bool ballIsAbovePaddle = ball.getBottom() < paddle.getTop();
     bool ballIsBelowPaddle = ball.getTop() > paddle.getBottom();
@@ -288,24 +295,33 @@ void render(HWND hwnd) {
         std::wstring playerScoreText = std::to_wstring(score.player);
         std::wstring npcScoreText    = std::to_wstring(score.npc);
 
-        if (paused) {
+        if (gameIsPaused) {
             std::wstring pausedText = L"Paused";
             pRenderTarget->DrawText(pausedText.c_str(),
                                     pausedText.length(),
                                     pPausedTextFormat,
                                     pausedRect,
                                     pBrush
-        );
+            );
+        }
+        if (!gameHasStarted) {
+            std::wstring pausedText = L"Press Space To Start";
+            pRenderTarget->DrawText(pausedText.c_str(),
+                                    pausedText.length(),
+                                    pPausedTextFormat,
+                                    pausedRect,
+                                    pBrush
+            );
         }
         pRenderTarget->DrawText(playerScoreText.c_str(),
                                 playerScoreText.length(), 
-                                pScoreTextFormat,
+                                pMenuTextFormat,
                                 score.playerRect,
                                 pBrush
         );
         pRenderTarget->DrawText(npcScoreText.c_str(),
                                 npcScoreText.length(),
-                                pScoreTextFormat,
+                                pMenuTextFormat,
                                 score.npcRect,
                                 pBrush
         );
@@ -349,9 +365,9 @@ WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 DWRITE_FONT_STRETCH_NORMAL,
                 100.0f,
                 L"en-US",
-                &pScoreTextFormat
+                &pMenuTextFormat
             );
-            pScoreTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+            pMenuTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
 
             pDWriteFactory->CreateTextFormat(
                 L"Lucida Console",
