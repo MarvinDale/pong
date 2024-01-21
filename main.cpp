@@ -70,7 +70,7 @@ class Paddle {
 public:
     Vector2d upperLeft;
     Vector2d lowerRight;
-    float speed = 1;
+    float speed = 0.75;
     float length;
     Vector2d velocity;
 
@@ -86,15 +86,19 @@ public:
         this->lowerRight.y = lowerRightY;
         length = lowerRightY - upperLeftY;
     };
+
+    float getTop()    { return upperLeft.y;}
+    float getBottom() { return lowerRight.y;}
 };
 
 class Ball {
 public:
     Vector2d  upperLeft;
     Vector2d  lowerRight;
-    float     speed = 1;
+    float     speed = 1.25;
     const int HALF_WIDTH = 12;
     Vector2d  direction;
+    bool      hasScored = false;
 
     Ball() : direction(-1, 0.4) {
         upperLeft.x  = WINDOW_CENTER_X - HALF_WIDTH;
@@ -115,6 +119,9 @@ public:
         lowerRight.x = WINDOW_CENTER_X + HALF_WIDTH;
         lowerRight.y = WINDOW_CENTER_Y + HALF_WIDTH;
     };
+
+    float getTop()    { return upperLeft.y;  }
+    float getBottom() { return lowerRight.y; }
 };
 
 struct Score {
@@ -158,17 +165,39 @@ void update(float deltaTime, RECT windowRect) {
 
     if (paused) { return; }
 
+    bool ballIsAbovePaddle = ball.getBottom() < paddle.getTop();
+    bool ballIsBelowPaddle = ball.getTop() > paddle.getBottom();
+    // detect if the ball has passed the paddle
+    if (ball.upperLeft.x <= paddle.lowerRight.x &&
+        (ballIsAbovePaddle || ballIsBelowPaddle)) {
+        // stops ball changing direction before going off screen after passing the paddle
+        ball.hasScored = true; 
+    }
+
     // detect collision with player paddle
     if (ball.upperLeft.x  <= paddle.lowerRight.x &&
-        ball.lowerRight.y >= paddle.upperLeft.y  &&
-        ball.upperLeft.y  <= paddle.lowerRight.y) {
+        ball.getBottom() >= paddle.getTop()      &&
+        ball.getTop()  <= paddle.getBottom()     &&
+        !ball.hasScored) {
+
         ball.direction.x = -ball.direction.x;
+    }
+
+    bool ballIsAboveNPCPaddle = ball.getBottom() < paddleNPC.getTop();
+    bool ballIsBelowNPCPaddle = ball.getTop() > paddleNPC.getBottom();
+
+    if (ball.lowerRight.x >= paddleNPC.upperLeft.x &&
+        (ballIsAboveNPCPaddle || ballIsBelowNPCPaddle)) {
+
+        ball.hasScored = true;
     }
 
     // detect collision with npc paddle
     if (ball.lowerRight.x >= paddleNPC.upperLeft.x &&
-        ball.lowerRight.y >= paddleNPC.upperLeft.y &&
-        ball.upperLeft.y  <= paddleNPC.lowerRight.y) {
+        ball.getBottom() >= paddleNPC.getTop()     &&
+        ball.getTop()  <= paddleNPC.getBottom()    &&
+        !ball.hasScored) {
+
         ball.direction.x = -ball.direction.x;
     }
 
@@ -177,6 +206,7 @@ void update(float deltaTime, RECT windowRect) {
         score.npc++;
         ball.resetPosition();
         ball.direction.x = -ball.direction.x;
+        ball.hasScored = false;
     }
 
     // handle ball going off screen right
@@ -184,6 +214,7 @@ void update(float deltaTime, RECT windowRect) {
         score.player++;
         ball.resetPosition();
         ball.direction.x = -ball.direction.x;
+        ball.hasScored = false;
     }
     
     // bounce the ball off the top and bottom of the screen
@@ -195,8 +226,8 @@ void update(float deltaTime, RECT windowRect) {
     paddle.upperLeft     += paddle.velocity * deltaTime;
     paddle.lowerRight    += paddle.velocity * deltaTime;
 
-    paddleNPC.upperLeft  += paddle.velocity * deltaTime;
-    paddleNPC.lowerRight += paddle.velocity * deltaTime;
+    paddleNPC.upperLeft  += Vector2d(0, ball.getVelocity().y) * deltaTime;
+    paddleNPC.lowerRight += Vector2d(0, ball.getVelocity().y) * deltaTime;
     
     // if a paddle goes off the top of the screen reset it's position to be at the edge of the screen
     if (paddle.upperLeft.y < 0) {
