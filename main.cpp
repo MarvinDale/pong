@@ -16,8 +16,8 @@ IDWriteTextFormat     *pPausedTextFormat = nullptr;
 bool paused = false;
 
 int const WINDOW_WIDTH = 1920;
-int const WINDOW_HIGHT = 1080;
-int const WINDOW_CENTER_Y = WINDOW_HIGHT / 2;
+int const WINDOW_HEIGHT = 1080;
+int const WINDOW_CENTER_Y = WINDOW_HEIGHT / 2;
 int const WINDOW_CENTER_X = WINDOW_WIDTH / 2;
 
 D2D1_RECT_F pausedRect = D2D1::RectF(
@@ -210,14 +210,14 @@ void update(float deltaTime, RECT windowRect) {
     } 
 
     // if a paddle goes off the bottom of the screen reset it's position to be at the edge of the screen
-    if (paddle.lowerRight.y > WINDOW_HIGHT) {
-        paddle.lowerRight.y  = WINDOW_HIGHT;
-        paddle.upperLeft.y   = WINDOW_HIGHT - paddle.length;
+    if (paddle.lowerRight.y > WINDOW_HEIGHT) {
+        paddle.lowerRight.y  = WINDOW_HEIGHT;
+        paddle.upperLeft.y   = WINDOW_HEIGHT - paddle.length;
     } 
 
-    if (paddleNPC.lowerRight.y > WINDOW_HIGHT) {
-        paddleNPC.lowerRight.y  = WINDOW_HIGHT;
-        paddleNPC.upperLeft.y   = WINDOW_HIGHT - paddleNPC.length;
+    if (paddleNPC.lowerRight.y > WINDOW_HEIGHT) {
+        paddleNPC.lowerRight.y  = WINDOW_HEIGHT;
+        paddleNPC.upperLeft.y   = WINDOW_HEIGHT - paddleNPC.length;
     } 
 
     // update ball position
@@ -380,7 +380,7 @@ int WINAPI WinMain(HINSTANCE hInst,
         "Pong",
         (WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX),
         CW_USEDEFAULT, CW_USEDEFAULT,
-        WINDOW_WIDTH, WINDOW_HIGHT,
+        WINDOW_WIDTH, WINDOW_HEIGHT,
         NULL,
         NULL,
         hInst,
