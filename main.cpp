@@ -71,9 +71,9 @@ class Paddle {
 public:
     Vector2d upperLeft;
     Vector2d lowerRight;
+    Vector2d direction;
     float speed = 0.75;
     float length;
-    Vector2d velocity;
 
     D2D1_RECT_F getRect() {
         return D2D1::RectF(upperLeft.x, upperLeft.y, lowerRight.x, lowerRight.y);
@@ -81,6 +81,7 @@ public:
     
     Paddle() {};
     Paddle(float upperLeftX, float upperLeftY, float lowerRightX, float lowerRightY) {
+        this->direction    = Vector2d::zero();
         this->upperLeft.x  = upperLeftX;
         this->upperLeft.y  = upperLeftY;
         this->lowerRight.x = lowerRightX;
@@ -90,6 +91,7 @@ public:
 
     float getTop()    { return upperLeft.y;}
     float getBottom() { return lowerRight.y;}
+    Vector2d getVelocity() { return direction * speed; }
 };
 
 class Ball {
@@ -163,8 +165,8 @@ void onKeyDown(WPARAM wParam) {
     if (vkCode == VK_SPACE) { 
         if (!gameHasStarted) { gameHasStarted = true; }
     }
-    if (scanCode == SCAN_CODE_W) { paddle.velocity = Vector2d::up()   * paddle.speed; }
-    if (scanCode == SCAN_CODE_S) { paddle.velocity = Vector2d::down() * paddle.speed; }
+    if (scanCode == SCAN_CODE_W) { paddle.direction = Vector2d::up();   }
+    if (scanCode == SCAN_CODE_S) { paddle.direction = Vector2d::down(); }
 }
 
 void update(float deltaTime, RECT windowRect) {
@@ -188,6 +190,9 @@ void update(float deltaTime, RECT windowRect) {
         !ball.hasScored) {
 
         ball.direction.x = -ball.direction.x;
+        if (paddle.direction.y != 0) {
+            ball.direction.y = (paddle.direction.y * ball.direction.x) * 0.4;
+        }
     }
 
     bool ballIsAboveNPCPaddle = ball.getBottom() < paddleNPC.getTop();
@@ -206,6 +211,9 @@ void update(float deltaTime, RECT windowRect) {
         !ball.hasScored) {
 
         ball.direction.x = -ball.direction.x;
+        if (paddle.direction.y != 0) {
+            ball.direction.y = (paddle.direction.y * ball.direction.x) * 0.4;
+        }
     }
 
     // handle ball going off screen left
@@ -230,8 +238,8 @@ void update(float deltaTime, RECT windowRect) {
     }
     
     // update paddle position
-    paddle.upperLeft     += paddle.velocity * deltaTime;
-    paddle.lowerRight    += paddle.velocity * deltaTime;
+    paddle.upperLeft     += paddle.getVelocity() * deltaTime;
+    paddle.lowerRight    += paddle.getVelocity() * deltaTime;
 
     paddleNPC.upperLeft  += Vector2d(0, ball.getVelocity().y) * deltaTime;
     paddleNPC.lowerRight += Vector2d(0, ball.getVelocity().y) * deltaTime;
@@ -387,8 +395,8 @@ WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             WORD vkCode = LOWORD(wParam);
             WORD scanCode = MapVirtualKeyA(vkCode, MAPVK_VK_TO_VSC);
             
-            if (scanCode == SCAN_CODE_W) { paddle.velocity = Vector2d::zero(); } 
-            if (scanCode == SCAN_CODE_S) { paddle.velocity = Vector2d::zero(); } 
+            if (scanCode == SCAN_CODE_W) { paddle.direction = Vector2d::zero(); } 
+            if (scanCode == SCAN_CODE_S) { paddle.direction = Vector2d::zero(); } 
         } break;
 
         case WM_KEYDOWN:
