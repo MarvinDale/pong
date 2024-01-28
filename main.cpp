@@ -189,12 +189,7 @@ void onKeyDown(WPARAM wParam) {
     if (scanCode == SCAN_CODE_S) { paddle.direction = Vector2d::down(); }
 }
 
-void update(float deltaTime, RECT windowRect) {
-
-    if (!gameHasStarted) { return; }
-    if (gameIsPaused)    { return; }
-    if (gameIsOver)      { return; }
-
+void handleGoals(RECT windowRect) {
     bool ballIsAbovePaddle = ball.getBottom() < paddle.getTop();
     bool ballIsBelowPaddle = ball.getTop() > paddle.getBottom();
     // detect if the ball has passed the paddle
@@ -204,18 +199,6 @@ void update(float deltaTime, RECT windowRect) {
         ball.hasScored = true; 
     }
 
-    // detect collision with player paddle
-    if (ball.upperLeft.x  <= paddle.lowerRight.x &&
-        ball.getBottom() >= paddle.getTop()      &&
-        ball.getTop()  <= paddle.getBottom()     &&
-        !ball.hasScored) {
-
-        ball.direction.x = -ball.direction.x;
-        if (paddle.direction.y != 0) {
-            ball.direction.y = (paddle.direction.y * ball.direction.x) * 0.4;
-        }
-    }
-
     bool ballIsAboveNPCPaddle = ball.getBottom() < paddleNPC.getTop();
     bool ballIsBelowNPCPaddle = ball.getTop() > paddleNPC.getBottom();
 
@@ -223,18 +206,6 @@ void update(float deltaTime, RECT windowRect) {
         (ballIsAboveNPCPaddle || ballIsBelowNPCPaddle)) {
 
         ball.hasScored = true;
-    }
-
-    // detect collision with npc paddle
-    if (ball.lowerRight.x >= paddleNPC.upperLeft.x &&
-        ball.getBottom() >= paddleNPC.getTop()     &&
-        ball.getTop()  <= paddleNPC.getBottom()    &&
-        !ball.hasScored) {
-
-        ball.direction.x = -ball.direction.x;
-        if (paddle.direction.y != 0) {
-            ball.direction.y = (paddle.direction.y * ball.direction.x) * 0.4;
-        }
     }
 
     // handle ball going off screen left
@@ -260,12 +231,40 @@ void update(float deltaTime, RECT windowRect) {
             playerWon = true;
         }
     }
-    
+}
+
+void handleCollisions(RECT windowRect) {
+    // detect collision with player paddle
+    if (ball.upperLeft.x  <= paddle.lowerRight.x &&
+        ball.getBottom() >= paddle.getTop()      &&
+        ball.getTop()  <= paddle.getBottom()     &&
+        !ball.hasScored) {
+
+        ball.direction.x = -ball.direction.x;
+        if (paddle.direction.y != 0) {
+            ball.direction.y = (paddle.direction.y * ball.direction.x) * 0.4;
+        }
+    }
+
+    // detect collision with npc paddle
+    if (ball.lowerRight.x >= paddleNPC.upperLeft.x &&
+        ball.getBottom() >= paddleNPC.getTop()     &&
+        ball.getTop()  <= paddleNPC.getBottom()    &&
+        !ball.hasScored) {
+
+        ball.direction.x = -ball.direction.x;
+        if (paddle.direction.y != 0) {
+            ball.direction.y = (paddle.direction.y * ball.direction.x) * 0.4;
+        }
+    }
+
     // bounce the ball off the top and bottom of the screen
     if (ball.lowerRight.y > windowRect.bottom || ball.upperLeft.y < windowRect.top) {
         ball.direction.y = -ball.direction.y;
     }
-    
+}
+
+void updatePaddlePositions(float deltaTime) {
     // update paddle position
     paddle.upperLeft     += paddle.getVelocity() * deltaTime;
     paddle.lowerRight    += paddle.getVelocity() * deltaTime;
@@ -294,10 +293,24 @@ void update(float deltaTime, RECT windowRect) {
         paddleNPC.lowerRight.y  = WINDOW_HEIGHT;
         paddleNPC.upperLeft.y   = WINDOW_HEIGHT - paddleNPC.length;
     } 
+}
 
-    // update ball position
+void updateBallPosition(float deltaTime) {
     ball.upperLeft  += ball.getVelocity() * deltaTime;
     ball.lowerRight += ball.getVelocity() * deltaTime;
+}
+
+void update(float deltaTime, RECT windowRect) {
+
+    if (!gameHasStarted) { return; }
+    if (gameIsPaused)    { return; }
+    if (gameIsOver)      { return; }
+
+    handleGoals(windowRect);
+    handleCollisions(windowRect);
+    
+    updatePaddlePositions(deltaTime);
+    updateBallPosition(deltaTime);
 }
 
 void render(HWND hwnd) {
@@ -394,10 +407,8 @@ void render(HWND hwnd) {
 }
 
 LRESULT CALLBACK 
-WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
-{
-    switch (uMsg)
-    {
+WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    switch (uMsg) {
         case WM_CREATE:
         {
             if (FAILED(D2D1CreateFactory(
@@ -490,7 +501,6 @@ int WINAPI WinMain(HINSTANCE hInst,
 
     ShowWindow(hwnd, cmdshow);
 
-    // print window size on creation
     RECT windowRect;
     GetClientRect(hwnd, &windowRect);
 
