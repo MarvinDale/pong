@@ -10,21 +10,25 @@ ID2D1Factory          *pFactory          = nullptr;
 ID2D1HwndRenderTarget *pRenderTarget     = nullptr;
 ID2D1SolidColorBrush  *pBrush            = nullptr;
 IDWriteFactory        *pDWriteFactory    = nullptr;
-IDWriteTextFormat     *pMenuTextFormat   = nullptr;
+IDWriteTextFormat     *pScoreTextFormat  = nullptr;
 IDWriteTextFormat     *pPausedTextFormat = nullptr;
 
 bool gameIsPaused   = false;
 bool gameHasStarted = false;
+bool gameIsOver     = false;
+bool playerWon      = false;
 
 int const WINDOW_WIDTH  = 1920;
 int const WINDOW_HEIGHT = 1080;
 int const WINDOW_CENTER_Y = WINDOW_HEIGHT / 2;
 int const WINDOW_CENTER_X = WINDOW_WIDTH / 2;
+int const TARGET_SCORE = 5;
 
-D2D1_RECT_F pausedRect = D2D1::RectF(
-    WINDOW_CENTER_X - 150,
-    WINDOW_CENTER_Y - 50,
-    WINDOW_CENTER_X + 150,
+// have the menu just above the screen centre
+D2D1_RECT_F menuRect = D2D1::RectF(
+    WINDOW_CENTER_X - 200,
+    WINDOW_CENTER_Y - 75,
+    WINDOW_CENTER_X + 200,
     WINDOW_CENTER_Y + 50
 ); 
 
@@ -72,6 +76,7 @@ public:
     Vector2d upperLeft;
     Vector2d lowerRight;
     Vector2d direction;
+    Vector2d initialPosition;
     float speed = 0.75;
     float length;
 
@@ -87,11 +92,16 @@ public:
         this->lowerRight.x = lowerRightX;
         this->lowerRight.y = lowerRightY;
         length = lowerRightY - upperLeftY;
+        initialPosition = Vector2d(upperLeftY, lowerRightY);
     };
 
-    float getTop()    { return upperLeft.y;}
+    float getTop()    { return upperLeft.y; }
     float getBottom() { return lowerRight.y;}
     Vector2d getVelocity() { return direction * speed; }
+    void resetPosition() {
+        upperLeft.y  = initialPosition.x;
+        lowerRight.y = initialPosition.y;
+    }
 };
 
 class Ball {
@@ -152,17 +162,27 @@ Ball ball;
 const WORD SCAN_CODE_W = 17;
 const WORD SCAN_CODE_S = 31;
 
+void restartGame() {
+    gameIsPaused = false;
+    gameIsOver = false;
+    
+    score.player = 0;
+    score.npc = 0;
+
+    paddle.resetPosition();
+    paddleNPC.resetPosition();
+}
+
 void onKeyDown(WPARAM wParam) {
     WORD vkCode   = LOWORD(wParam);
     WORD scanCode = MapVirtualKeyA(vkCode, MAPVK_VK_TO_VSC);
     
-    if (vkCode == VK_ESCAPE) { 
-        if (gameHasStarted) {
-            if (gameIsPaused) { gameIsPaused = false; }
-            else { gameIsPaused = true; }
-        }
+    if (vkCode == VK_ESCAPE && gameHasStarted) { 
+        if (gameIsPaused) { gameIsPaused = false; }
+        else { gameIsPaused = true; }
     }
     if (vkCode == VK_SPACE) { 
+        if (gameIsOver) { restartGame(); } else
         if (!gameHasStarted) { gameHasStarted = true; }
     }
     if (scanCode == SCAN_CODE_W) { paddle.direction = Vector2d::up();   }
@@ -173,6 +193,7 @@ void update(float deltaTime, RECT windowRect) {
 
     if (!gameHasStarted) { return; }
     if (gameIsPaused)    { return; }
+    if (gameIsOver)      { return; }
 
     bool ballIsAbovePaddle = ball.getBottom() < paddle.getTop();
     bool ballIsBelowPaddle = ball.getTop() > paddle.getBottom();
@@ -222,6 +243,10 @@ void update(float deltaTime, RECT windowRect) {
         ball.resetPosition();
         ball.direction.x = -ball.direction.x;
         ball.hasScored = false;
+        if (score.npc >= TARGET_SCORE) {
+            gameIsOver = true;
+            playerWon = false;
+        }
     }
 
     // handle ball going off screen right
@@ -230,6 +255,10 @@ void update(float deltaTime, RECT windowRect) {
         ball.resetPosition();
         ball.direction.x = -ball.direction.x;
         ball.hasScored = false;
+        if (score.player >= TARGET_SCORE) {
+            gameIsOver = true;
+            playerWon = true;
+        }
     }
     
     // bounce the ball off the top and bottom of the screen
@@ -303,33 +332,48 @@ void render(HWND hwnd) {
         std::wstring playerScoreText = std::to_wstring(score.player);
         std::wstring npcScoreText    = std::to_wstring(score.npc);
 
-        if (gameIsPaused) {
-            std::wstring pausedText = L"Paused";
-            pRenderTarget->DrawText(pausedText.c_str(),
-                                    pausedText.length(),
+        if (gameIsOver) {
+            std::wstring menuText;
+            if (playerWon) {
+                menuText = L"Game Over. You Won!\nPress Space To Play Again";
+            } else {
+                menuText = L"Game Over. You Lost!\nPress Space To Play Again";
+            }
+            pRenderTarget->DrawText(menuText.c_str(),
+                                    menuText.length(),
                                     pPausedTextFormat,
-                                    pausedRect,
+                                    menuRect,
                                     pBrush
             );
-        }
-        if (!gameHasStarted) {
-            std::wstring pausedText = L"Press Space To Start";
-            pRenderTarget->DrawText(pausedText.c_str(),
-                                    pausedText.length(),
-                                    pPausedTextFormat,
-                                    pausedRect,
-                                    pBrush
-            );
+        } else {
+            if (gameIsPaused) {
+                std::wstring menuText = L"Paused";
+                pRenderTarget->DrawText(menuText.c_str(),
+                                        menuText.length(),
+                                        pPausedTextFormat,
+                                        menuRect,
+                                        pBrush
+                );
+            }
+            if (!gameHasStarted) {
+                std::wstring menuText = L"Press Space To Start";
+                pRenderTarget->DrawText(menuText.c_str(),
+                                        menuText.length(),
+                                        pPausedTextFormat,
+                                        menuRect,
+                                        pBrush
+                );
+            }
         }
         pRenderTarget->DrawText(playerScoreText.c_str(),
                                 playerScoreText.length(), 
-                                pMenuTextFormat,
+                                pScoreTextFormat,
                                 score.playerRect,
                                 pBrush
         );
         pRenderTarget->DrawText(npcScoreText.c_str(),
                                 npcScoreText.length(),
-                                pMenuTextFormat,
+                                pScoreTextFormat,
                                 score.npcRect,
                                 pBrush
         );
@@ -373,9 +417,9 @@ WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 DWRITE_FONT_STRETCH_NORMAL,
                 100.0f,
                 L"en-US",
-                &pMenuTextFormat
+                &pScoreTextFormat
             );
-            pMenuTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+            pScoreTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
 
             pDWriteFactory->CreateTextFormat(
                 L"Lucida Console",
