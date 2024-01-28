@@ -18,6 +18,8 @@ bool gameHasStarted = false;
 bool gameIsOver     = false;
 bool playerWon      = false;
 
+LARGE_INTEGER TICKS_PER_SECOND;
+
 int const WINDOW_WIDTH  = 1920;
 int const WINDOW_HEIGHT = 1080;
 int const WINDOW_CENTER_Y = WINDOW_HEIGHT / 2;
@@ -112,6 +114,8 @@ public:
     const int HALF_WIDTH = 12;
     Vector2d  direction;
     bool      hasScored = false;
+    bool      isWaitingToMove = false;
+    uint64_t  timerStart = 0; 
 
     Ball() : direction(-1, 0.4) {
         upperLeft.x  = WINDOW_CENTER_X - HALF_WIDTH;
@@ -131,6 +135,13 @@ public:
         upperLeft.y  = WINDOW_CENTER_Y - HALF_WIDTH;
         lowerRight.x = WINDOW_CENTER_X + HALF_WIDTH;
         lowerRight.y = WINDOW_CENTER_Y + HALF_WIDTH;
+
+        isWaitingToMove = true;
+
+        LARGE_INTEGER currentTickCount;
+        QueryPerformanceCounter(&currentTickCount);
+        uint64_t elapsedTicks = currentTickCount.QuadPart;
+        timerStart = elapsedTicks;
     };
 
     float getTop()    { return upperLeft.y;  }
@@ -189,7 +200,7 @@ void onKeyDown(WPARAM wParam) {
     if (scanCode == SCAN_CODE_S) { paddle.direction = Vector2d::down(); }
 }
 
-void handleGoals(RECT windowRect) {
+void handleGoals(float deltaTime, RECT windowRect) {
     bool ballIsAbovePaddle = ball.getBottom() < paddle.getTop();
     bool ballIsBelowPaddle = ball.getTop() > paddle.getBottom();
     // detect if the ball has passed the paddle
@@ -306,11 +317,29 @@ void update(float deltaTime, RECT windowRect) {
     if (gameIsPaused)    { return; }
     if (gameIsOver)      { return; }
 
-    handleGoals(windowRect);
+    handleGoals(deltaTime, windowRect);
     handleCollisions(windowRect);
     
     updatePaddlePositions(deltaTime);
-    updateBallPosition(deltaTime);
+
+    // after scoring and reseting the ball position, wait for a second before
+    // moving the ball again
+    if (ball.isWaitingToMove) {
+
+        LARGE_INTEGER currentTickCount;
+        QueryPerformanceCounter(&currentTickCount);
+
+        uint64_t elapsedTicks = currentTickCount.QuadPart - ball.timerStart;
+        uint64_t elapsedTimeInMicroseconds = (elapsedTicks * 1000000) / TICKS_PER_SECOND.QuadPart;
+        uint64_t elapsedTimeInMilliseconds = elapsedTimeInMicroseconds / 1000.0f;
+        float oneSecond = 1000;
+
+        if (elapsedTimeInMilliseconds > oneSecond) {
+            ball.isWaitingToMove = false;
+        }
+    } else {
+        updateBallPosition(deltaTime);
+    }
 }
 
 void render(HWND hwnd) {
@@ -504,11 +533,10 @@ int WINAPI WinMain(HINSTANCE hInst,
     RECT windowRect;
     GetClientRect(hwnd, &windowRect);
 
-    LARGE_INTEGER ticksPerSecond;
     LARGE_INTEGER previousTickCount;
     LARGE_INTEGER currentTickCount;
 
-    QueryPerformanceFrequency(&ticksPerSecond);
+    QueryPerformanceFrequency(&TICKS_PER_SECOND);
     QueryPerformanceCounter(&previousTickCount);
 
     bool running = true; 
@@ -529,7 +557,7 @@ int WINAPI WinMain(HINSTANCE hInst,
         // get delta time
         QueryPerformanceCounter(&currentTickCount);
         elapsedTicks = currentTickCount.QuadPart - previousTickCount.QuadPart;
-        elapsedTimeInMicroseconds = (elapsedTicks * 1000000) / ticksPerSecond.QuadPart;
+        elapsedTimeInMicroseconds = (elapsedTicks * 1000000) / TICKS_PER_SECOND.QuadPart;
 
         // deltaTime in milliseconds
         deltaTime = elapsedTimeInMicroseconds / 1000.0f;
