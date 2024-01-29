@@ -79,7 +79,7 @@ public:
     Vector2d lowerRight;
     Vector2d direction;
     Vector2d initialPosition;
-    float speed = 0.75;
+    float speed;
     float length;
 
     D2D1_RECT_F getRect() {
@@ -87,12 +87,13 @@ public:
     };
     
     Paddle() {};
-    Paddle(float upperLeftX, float upperLeftY, float lowerRightX, float lowerRightY) {
+    Paddle(float upperLeftX, float upperLeftY, float lowerRightX, float lowerRightY, float speed) {
         this->direction    = Vector2d::zero();
         this->upperLeft.x  = upperLeftX;
         this->upperLeft.y  = upperLeftY;
         this->lowerRight.x = lowerRightX;
         this->lowerRight.y = lowerRightY;
+        this->speed        = speed;
         length = lowerRightY - upperLeftY;
         initialPosition = Vector2d(upperLeftY, lowerRightY);
     };
@@ -117,7 +118,7 @@ public:
     bool      isWaitingToMove = false;
     uint64_t  timerStart = 0; 
 
-    Ball() : direction(-1, 0.4) {
+    Ball() : direction(-1, 0.5) {
         upperLeft.x  = WINDOW_CENTER_X - HALF_WIDTH;
         upperLeft.y  = WINDOW_CENTER_Y - HALF_WIDTH;
         lowerRight.x = WINDOW_CENTER_X + HALF_WIDTH;
@@ -161,11 +162,12 @@ struct Score {
 
 Score score;
 
-Paddle paddle(200, WINDOW_CENTER_Y - 100, 225, WINDOW_CENTER_Y + 100);
+Paddle paddle(200, WINDOW_CENTER_Y - 100, 225, WINDOW_CENTER_Y + 100, 0.75);
 Paddle paddleNPC(WINDOW_WIDTH - 225,
                  WINDOW_CENTER_Y - 100,
                  WINDOW_WIDTH - 200,
-                 WINDOW_CENTER_Y + 100
+                 WINDOW_CENTER_Y + 100,
+                 0.5
 );
 
 Ball ball;
@@ -253,7 +255,7 @@ void handleCollisions(RECT windowRect) {
 
         ball.direction.x = -ball.direction.x;
         if (paddle.direction.y != 0) {
-            ball.direction.y = (paddle.direction.y * ball.direction.x) * 0.4;
+            ball.direction.y = (paddle.direction.y * ball.direction.x) * 0.5;
         }
     }
 
@@ -265,7 +267,7 @@ void handleCollisions(RECT windowRect) {
 
         ball.direction.x = -ball.direction.x;
         if (paddle.direction.y != 0) {
-            ball.direction.y = (paddle.direction.y * ball.direction.x) * 0.4;
+            ball.direction.y = (paddle.direction.y * ball.direction.x) * 0.5;
         }
     }
 
@@ -280,8 +282,17 @@ void updatePaddlePositions(float deltaTime) {
     paddle.upperLeft     += paddle.getVelocity() * deltaTime;
     paddle.lowerRight    += paddle.getVelocity() * deltaTime;
 
-    paddleNPC.upperLeft  += Vector2d(0, ball.getVelocity().y) * deltaTime;
-    paddleNPC.lowerRight += Vector2d(0, ball.getVelocity().y) * deltaTime;
+    // update npc paddle position
+    bool npcPaddleIsBelowBall = ball.lowerRight.y < paddleNPC.lowerRight.y;
+    if (npcPaddleIsBelowBall) {
+        paddleNPC.direction = Vector2d::up();
+        paddleNPC.upperLeft  += paddleNPC.getVelocity() * deltaTime;
+        paddleNPC.lowerRight += paddleNPC.getVelocity() * deltaTime;
+    } else {
+        paddleNPC.direction = Vector2d::down();
+        paddleNPC.upperLeft  += paddleNPC.getVelocity() * deltaTime;
+        paddleNPC.lowerRight += paddleNPC.getVelocity() * deltaTime;
+    }
     
     // if a paddle goes off the top of the screen reset it's position to be at the edge of the screen
     if (paddle.upperLeft.y < 0) {
@@ -292,6 +303,7 @@ void updatePaddlePositions(float deltaTime) {
     if (paddleNPC.upperLeft.y < 0) {
         paddleNPC.upperLeft.y  = 0;
         paddleNPC.lowerRight.y = paddleNPC.length;
+        paddleNPC.direction = Vector2d::zero();
     } 
 
     // if a paddle goes off the bottom of the screen reset it's position to be at the edge of the screen
@@ -303,6 +315,7 @@ void updatePaddlePositions(float deltaTime) {
     if (paddleNPC.lowerRight.y > WINDOW_HEIGHT) {
         paddleNPC.lowerRight.y  = WINDOW_HEIGHT;
         paddleNPC.upperLeft.y   = WINDOW_HEIGHT - paddleNPC.length;
+        paddleNPC.direction = Vector2d::zero();
     } 
 }
 
