@@ -5,7 +5,7 @@
 - Use minimal librarys
 
 # Controls
-Space - Start the game
-Esc   - Pause the game
-w     - Move up
-s     - Move down
+Space, Start the game
+Esc,   Pause the game
+w,     Move up
+s,     Move down
