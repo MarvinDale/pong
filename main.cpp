@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <iostream>
 #include <string>
+#include "Vector2d.cpp"
 
 ID2D1Factory          *pFactory          = nullptr;
 ID2D1HwndRenderTarget *pRenderTarget     = nullptr;
@@ -34,73 +35,33 @@ D2D1_RECT_F menuRect = D2D1::RectF(
     WINDOW_CENTER_Y + 50
 ); 
 
-struct Vector2d {
-    float x;
-    float y;
-
-    static Vector2d up()   { return Vector2d(0, -1); }
-    static Vector2d down() { return Vector2d(0,  1); }
-    static Vector2d zero() { return Vector2d(0,  0); }
-
-    Vector2d() : x(0), y(0) {}
-
-    Vector2d(float x, float y) {
-        this->x = x;
-        this->y = y;
-    }
-
-    Vector2d operator+(float value) {
-        Vector2d result;
-        result.x = x + value;
-        result.y = y + value;
-
-        return result;
-    }
-
-    Vector2d operator+=(Vector2d value) {
-        x += value.x;
-        y += value.y;
-
-        return *this;
-    }
-
-    Vector2d operator*(float value) {
-        Vector2d result;
-        result.x = x * value;
-        result.y = y * value;
-
-        return result;
-    }
-};
-
 class Paddle {
 public:
+    float speed;
+    float length;
     Vector2d upperLeft;
     Vector2d lowerRight;
     Vector2d direction;
     Vector2d initialPosition;
-    float speed;
-    float length;
+
+    
+    Paddle() {};
+    Paddle(float upperLeftX, float upperLeftY, float lowerRightX, float lowerRightY, float speed) :
+        speed(speed),
+        length(lowerRightY - upperLeftY),
+        upperLeft(upperLeftX, upperLeftY),
+        lowerRight(lowerRightX, lowerRightY),
+        direction(Vector2d::zero()),
+        initialPosition(Vector2d(upperLeftY, lowerRightY)) {};
+
+    float getTop() { return upperLeft.y; }
+    float getBottom() { return lowerRight.y;}
+    Vector2d getVelocity() { return direction * speed; }
 
     D2D1_RECT_F getRect() {
         return D2D1::RectF(upperLeft.x, upperLeft.y, lowerRight.x, lowerRight.y);
     };
-    
-    Paddle() {};
-    Paddle(float upperLeftX, float upperLeftY, float lowerRightX, float lowerRightY, float speed) {
-        this->direction    = Vector2d::zero();
-        this->upperLeft.x  = upperLeftX;
-        this->upperLeft.y  = upperLeftY;
-        this->lowerRight.x = lowerRightX;
-        this->lowerRight.y = lowerRightY;
-        this->speed        = speed;
-        length = lowerRightY - upperLeftY;
-        initialPosition = Vector2d(upperLeftY, lowerRightY);
-    };
 
-    float getTop()    { return upperLeft.y; }
-    float getBottom() { return lowerRight.y;}
-    Vector2d getVelocity() { return direction * speed; }
     void resetPosition() {
         upperLeft.y  = initialPosition.x;
         lowerRight.y = initialPosition.y;
@@ -109,27 +70,31 @@ public:
 
 class Ball {
 public:
-    Vector2d  upperLeft;
-    Vector2d  lowerRight;
-    float     speed = 1.25;
-    const int HALF_WIDTH = 12;
-    Vector2d  direction;
-    bool      hasScored = false;
-    bool      isWaitingToMove = false;
-    uint64_t  timerStart = 0; 
+    const int HALF_WIDTH;
+    float speed;
+    bool  hasScored;
+    bool  isWaitingToMove;
+    uint64_t timerStart; 
+    Vector2d upperLeft;
+    Vector2d lowerRight;
+    Vector2d direction;
 
-    Ball() : direction(-1, 0.5) {
-        upperLeft.x  = WINDOW_CENTER_X - HALF_WIDTH;
-        upperLeft.y  = WINDOW_CENTER_Y - HALF_WIDTH;
-        lowerRight.x = WINDOW_CENTER_X + HALF_WIDTH;
-        lowerRight.y = WINDOW_CENTER_Y + HALF_WIDTH;
-    }
+    Ball() :
+        HALF_WIDTH(12),
+        speed(1.25),
+        hasScored(false),
+        isWaitingToMove(false),
+        timerStart(0),
+        upperLeft(WINDOW_CENTER_X - HALF_WIDTH, WINDOW_CENTER_Y - HALF_WIDTH),
+        lowerRight(WINDOW_CENTER_X + HALF_WIDTH, WINDOW_CENTER_Y + HALF_WIDTH),
+        direction(-1, 0.5) {}
 
+    float getTop() { return upperLeft.y; }
+    float getBottom() { return lowerRight.y; }
+    Vector2d getVelocity() { return direction * speed; }
     D2D1_RECT_F getRect() {
         return D2D1::RectF(upperLeft.x, upperLeft.y, lowerRight.x, lowerRight.y);
     };
-
-    Vector2d getVelocity() { return direction * speed; }
 
     void resetPosition() {
         upperLeft.x  = WINDOW_CENTER_X - HALF_WIDTH;
@@ -144,9 +109,6 @@ public:
         uint64_t elapsedTicks = currentTickCount.QuadPart;
         timerStart = elapsedTicks;
     };
-
-    float getTop()    { return upperLeft.y;  }
-    float getBottom() { return lowerRight.y; }
 };
 
 struct Score {
@@ -283,7 +245,7 @@ void updatePaddlePositions(float deltaTime) {
     paddle.lowerRight    += paddle.getVelocity() * deltaTime;
 
     // update npc paddle position
-    bool npcPaddleIsBelowBall = ball.lowerRight.y < paddleNPC.lowerRight.y;
+    bool npcPaddleIsBelowBall = ball.getBottom() < paddleNPC.getBottom();
     if (npcPaddleIsBelowBall) {
         paddleNPC.direction = Vector2d::up();
         paddleNPC.upperLeft  += paddleNPC.getVelocity() * deltaTime;
@@ -303,7 +265,6 @@ void updatePaddlePositions(float deltaTime) {
     if (paddleNPC.upperLeft.y < 0) {
         paddleNPC.upperLeft.y  = 0;
         paddleNPC.lowerRight.y = paddleNPC.length;
-        paddleNPC.direction = Vector2d::zero();
     } 
 
     // if a paddle goes off the bottom of the screen reset it's position to be at the edge of the screen
@@ -315,7 +276,6 @@ void updatePaddlePositions(float deltaTime) {
     if (paddleNPC.lowerRight.y > WINDOW_HEIGHT) {
         paddleNPC.lowerRight.y  = WINDOW_HEIGHT;
         paddleNPC.upperLeft.y   = WINDOW_HEIGHT - paddleNPC.length;
-        paddleNPC.direction = Vector2d::zero();
     } 
 }
 
@@ -374,78 +334,78 @@ void render(HWND hwnd) {
         }
     }
 
-    if (SUCCEEDED(hr)) {
-        PAINTSTRUCT paintStruct;
-        BeginPaint(hwnd, &paintStruct);
+    if (FAILED(hr)) { return; }
 
-        pRenderTarget->BeginDraw();
-        pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF::DarkCyan));
-        pRenderTarget->FillRectangle(paddle.getRect(),    pBrush);
-        pRenderTarget->FillRectangle(paddleNPC.getRect(), pBrush);
-        pRenderTarget->FillRectangle(ball.getRect(),      pBrush);
+    PAINTSTRUCT paintStruct;
+    BeginPaint(hwnd, &paintStruct);
 
-        std::wstring playerScoreText = std::to_wstring(score.player);
-        std::wstring npcScoreText    = std::to_wstring(score.npc);
+    pRenderTarget->BeginDraw();
+    pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF::DarkCyan));
+    pRenderTarget->FillRectangle(paddle.getRect(),    pBrush);
+    pRenderTarget->FillRectangle(paddleNPC.getRect(), pBrush);
+    pRenderTarget->FillRectangle(ball.getRect(),      pBrush);
 
-        if (gameIsOver) {
-            std::wstring menuText;
-            if (playerWon) {
-                menuText = L"Game Over. You Won!\nPress Space To Play Again";
-            } else {
-                menuText = L"Game Over. You Lost!\nPress Space To Play Again";
-            }
+    std::wstring playerScoreText = std::to_wstring(score.player);
+    std::wstring npcScoreText    = std::to_wstring(score.npc);
+
+    if (gameIsOver) {
+        std::wstring menuText;
+        if (playerWon) {
+            menuText = L"Game Over. You Won!\nPress Space To Play Again";
+        } else {
+            menuText = L"Game Over. You Lost!\nPress Space To Play Again";
+        }
+        pRenderTarget->DrawText(menuText.c_str(),
+                                menuText.length(),
+                                pPausedTextFormat,
+                                menuRect,
+                                pBrush
+        );
+    } else {
+        if (gameIsPaused) {
+            std::wstring menuText = L"Paused";
             pRenderTarget->DrawText(menuText.c_str(),
                                     menuText.length(),
                                     pPausedTextFormat,
                                     menuRect,
                                     pBrush
             );
-        } else {
-            if (gameIsPaused) {
-                std::wstring menuText = L"Paused";
-                pRenderTarget->DrawText(menuText.c_str(),
-                                        menuText.length(),
-                                        pPausedTextFormat,
-                                        menuRect,
-                                        pBrush
-                );
-            }
-            if (!gameHasStarted) {
-                std::wstring menuText = L"Press Space To Start";
-                pRenderTarget->DrawText(menuText.c_str(),
-                                        menuText.length(),
-                                        pPausedTextFormat,
-                                        menuRect,
-                                        pBrush
-                );
-            }
         }
-        pRenderTarget->DrawText(playerScoreText.c_str(),
-                                playerScoreText.length(), 
-                                pScoreTextFormat,
-                                score.playerRect,
-                                pBrush
-        );
-        pRenderTarget->DrawText(npcScoreText.c_str(),
-                                npcScoreText.length(),
-                                pScoreTextFormat,
-                                score.npcRect,
-                                pBrush
-        );
-
-        hr = pRenderTarget->EndDraw();
-
-        if (FAILED(hr) || hr == (long) D2DERR_RECREATE_TARGET) {
-            // DiscardGraphicsResources
-            pRenderTarget->Release();
-            pBrush->Release();
-            pFactory->Release();
-            pRenderTarget = nullptr;
-            pBrush        = nullptr;
-            pFactory      = nullptr;
+        if (!gameHasStarted) {
+            std::wstring menuText = L"Press Space To Start";
+            pRenderTarget->DrawText(menuText.c_str(),
+                                    menuText.length(),
+                                    pPausedTextFormat,
+                                    menuRect,
+                                    pBrush
+            );
         }
-        EndPaint(hwnd, &paintStruct);
     }
+    pRenderTarget->DrawText(playerScoreText.c_str(),
+                            playerScoreText.length(), 
+                            pScoreTextFormat,
+                            score.playerRect,
+                            pBrush
+    );
+    pRenderTarget->DrawText(npcScoreText.c_str(),
+                            npcScoreText.length(),
+                            pScoreTextFormat,
+                            score.npcRect,
+                            pBrush
+    );
+
+    hr = pRenderTarget->EndDraw();
+
+    if (FAILED(hr) || hr == (long) D2DERR_RECREATE_TARGET) {
+        // DiscardGraphicsResources
+        pRenderTarget->Release();
+        pBrush->Release();
+        pFactory->Release();
+        pRenderTarget = nullptr;
+        pBrush        = nullptr;
+        pFactory      = nullptr;
+    }
+    EndPaint(hwnd, &paintStruct);
 }
 
 LRESULT CALLBACK 
@@ -554,9 +514,9 @@ int WINAPI WinMain(HINSTANCE hInst,
 
     bool running = true; 
     MSG msg = { };
+    float deltaTime;
     uint64_t elapsedTicks;
     uint64_t elapsedTimeInMicroseconds;
-    float deltaTime;
 
     while(running) {
         while(PeekMessage(&msg, 0, 0, 0, PM_REMOVE)) {
